@@ -1,0 +1,6 @@
+[submodule "ssdb/deps/leveldb@master"]
+	path = ssdb/deps/leveldb@master
+	url = https://github.com/google/leveldb.git
+[submodule "ssdb/deps/libuv@master"]
+	path = ssdb/deps/libuv@master
+	url = https://github.com/libuv/libuv.git

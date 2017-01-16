@@ -1,0 +1,13 @@
+{
+    "data_dir": "/tmp/ssdb",
+    "server": {
+        "ip": "127.0.0.1",
+        "port": 6379
+    },
+    "leveldb": {
+        "cache_size": 500,
+        "block_size": 32,
+        "compression": "yes",
+        "write_buffer_size": 64
+    }
+}
