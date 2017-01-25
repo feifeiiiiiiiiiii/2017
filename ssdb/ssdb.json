@@ -1,5 +1,6 @@
 {
-    "data_dir": "/tmp/ssdb",
+    "data_dir": "/tmp/ssdb/data",
+    "meta_dir": "/tmp/ssdb/meta",
     "server": {
         "ip": "127.0.0.1",
         "port": 6379

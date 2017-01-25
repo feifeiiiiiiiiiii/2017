@@ -4,7 +4,7 @@ export LIBUV_PATH="${BASE_DIR}/deps/libuv@master"
 
 all:
 	cd "${LEVELDB_PATH}"; make;
-	cd "${LIBUV_PATH}";./autogen.sh; ./configure; make;
+	cd "${LIBUV_PATH}"; make;
 	cd "src"; make;
 
 clean:

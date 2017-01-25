@@ -1,6 +1,7 @@
 OBJS = serv.o link_redis.o resp.o server.o \
 	   binlog.o ssdb_impl.o bytes.o log.o config.o \
-	   link.o proc.o proc_kv.o ssdb_server.o
+	   link.o proc.o proc_kv.o ssdb_server.o slave.o \
+	   backend_sync.o
 
 LIBS = -luv -lleveldb -std=c++11
 LEVELDB_INC = ${LEVELDB_PATH}/include
@@ -19,7 +20,7 @@ ssdb_server.o: ssdb_server.cpp
 proc_kv.o: proc_kv.cpp
 	${CXX} -c proc_kv.cpp -I${LEVELDB_INC}
 
-serv.o: serv.h serv.cpp ssdb/ssdb_impl.h net/server.h net/proc.h proc_kv.cpp
+serv.o: serv.h serv.cpp ssdb/ssdb_impl.h net/server.h net/proc.h proc_kv.cpp backend_sync.h
 	${CXX} -c serv.cpp -I${LEVELDB_INC}
 
 server.o: net/link.h net/proc.h util/config.h
@@ -51,6 +52,12 @@ link.o: net/proc.h util/bytes.h net/link_redis.h serv.h include.h
 
 proc.o: net/proc.h net/resp.h util/bytes.h
 	${CXX} -c net/proc.cpp
+
+slave.o: slave.h ssdb/ssdb_impl.h ssdb/binlog.h slave.cpp
+	${CXX} -c slave.cpp -I${LEVELDB_INC}
+
+backend_sync.o: include.h ssdb/ssdb_impl.h net/link.h ssdb/binlog.h backend_sync.cpp
+	${CXX} -c backend_sync.cpp -I${LEVELDB_INC} -I${LIBUV_INC}
 
 clean:
 	rm -f ${OBJS}

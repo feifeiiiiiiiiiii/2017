@@ -15,7 +15,10 @@ Config::Config() {
     block_size = 32;
     compression = "yes";
     write_buffer_size = 64;
-    data_dir = "/tmp";
+    data_dir = "ssdb/data";
+    meta_dir = "ssdb/meta";
+    master_port = -1;
+    master_ip = "";
 }
 
 Config* Config::load(const char *filename){
@@ -27,6 +30,10 @@ Config* Config::load(const char *filename){
 
     if(js["data_dir"].is_string()) {
         root->data_dir = js["data_dir"];
+    }
+
+    if(js["meta_dir"].is_string()) {
+        root->meta_dir = js["meta_dir"];
     }
 
     if(js["server"].is_object()) {
@@ -53,6 +60,17 @@ Config* Config::load(const char *filename){
 
         if(js["leveldb"]["compression"].is_string()) {
             root->compression = js["leveldb"]["compression"];
+        }
+    }
+
+    if(js["replication"].is_object()) {
+        if(js["replication"]["slaveof"].is_object()) {
+            if(js["replication"]["slaveof"]["port"].is_number()) {
+                root->master_port = js["replication"]["slaveof"]["port"];
+            }
+            if(js["replication"]["slaveof"]["ip"].is_string()) {
+                root->master_ip = js["replication"]["slaveof"]["ip"];
+            }
         }
     }
     return root;

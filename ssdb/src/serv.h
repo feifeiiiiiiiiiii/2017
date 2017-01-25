@@ -6,12 +6,16 @@
 #include <string>
 #include "ssdb/ssdb_impl.h"
 #include "net/server.h"
+#include "util/config.h"
+#include "backend_sync.h"
 
 class SSDBServer {
 private:
 public:
     SSDBImpl *ssdb;
-    SSDBServer(SSDB *ssdb, NetworkServer *net);
+    SSDBImpl *meta;
+    BackendSync *backend_sync;
+    SSDBServer(SSDB *ssdb, SSDB *meta, NetworkServer *net, const Config *cf);
     void reg_procs(NetworkServer *net);
     ~SSDBServer();
 };

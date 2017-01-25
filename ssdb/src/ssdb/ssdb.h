@@ -12,7 +12,7 @@ public:
     SSDB() {}
     virtual ~SSDB() {}
 
-	static SSDB* open(const Config *cf);
+	static SSDB* open(const Config *cf, std::string dir);
     virtual int set(const Bytes &key, const Bytes &val) = 0;
     virtual int del(const Bytes &key) = 0;
     virtual int get(const Bytes &key, std::string *val) = 0;

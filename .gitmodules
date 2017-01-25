@@ -4,3 +4,6 @@
 [submodule "ssdb/deps/libuv@master"]
 	path = ssdb/deps/libuv@master
 	url = https://github.com/libuv/libuv.git
+[submodule "ssdb/deps/libzmq@master"]
+	path = ssdb/deps/libzmq@master
+	url = https://github.com/zeromq/libzmq.git

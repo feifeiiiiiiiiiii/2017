@@ -1,0 +1,20 @@
+{
+    "data_dir": "/tmp/ssdb_slave/data",
+    "meta_dir": "/tmp/ssdb_slave/meta",
+    "server": {
+        "ip": "127.0.0.1",
+        "port": 8889
+    },
+    "leveldb": {
+        "cache_size": 500,
+        "block_size": 32,
+        "compression": "yes",
+        "write_buffer_size": 64
+    },
+    "replication": {
+        "slaveof": {
+            "ip": "127.0.0.1",
+            "port": 6379
+        }
+    }
+}

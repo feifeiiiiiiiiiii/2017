@@ -32,7 +32,7 @@ SSDBImpl::~SSDBImpl() {
     }
 }
 
-SSDB* SSDB::open(const Config *cf) {
+SSDB* SSDB::open(const Config *cf, std::string dir) {
 	SSDBImpl *ssdb = new SSDBImpl();
 	ssdb->options.create_if_missing = true;
 	ssdb->options.block_size = cf->block_size * 1024 * 1024;
@@ -43,7 +43,7 @@ SSDB* SSDB::open(const Config *cf) {
 
 	leveldb::Status status;
 
-	status = leveldb::DB::Open(ssdb->options, cf->data_dir, &ssdb->ldb);
+	status = leveldb::DB::Open(ssdb->options, dir, &ssdb->ldb);
 	if(!status.ok()){
 		log_error("open db failed: %s", status.ToString().c_str());
 		goto err;
