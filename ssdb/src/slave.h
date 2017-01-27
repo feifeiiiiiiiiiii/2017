@@ -14,22 +14,31 @@ found in the LICENSE file.
 #include "ssdb/ssdb_impl.h"
 #include "ssdb/binlog.h"
 #include "util/bytes.h"
+#include "net/link.h"
 
 class Slave {
 private:
+    static const int DISCONNECTED = 0;
+    static const int INIT = 1;
+    static const int COPY = 2;
+    static const int SYNC = 4;
+    static const int OUT_OF_SYNC = 8;
+    int status;
+    bool is_mirror;
+    char log_type;
+    uint64_t copy_count;
+    uint64_t sync_count;
+
 	uint64_t last_seq;
 	std::string last_key;
 		
 	std::string id_;
  	uv_thread_t tid;
 	uv_loop_t *loop;
-	uv_tcp_t client;
 	uv_connect_t connect_req;
 	bool thread_quit;
 
-    Buffer *input;
-    Buffer *output;
-
+    Link *link;
 	SSDB *ssdb;
 	SSDB *meta;
     void migrate_old_status();
@@ -42,17 +51,20 @@ private:
         buf->base = (char *)malloc(suggested_size);
         buf->len = suggested_size;
     }
-    int send(const Bytes &s1, const Bytes &s2, const Bytes &s3);
+    int proc(const std::vector<Bytes> &req);
+    int proc_sync(const Binlog &log, const std::vector<Bytes> &req);
+	int proc_copy(const Binlog &log, const std::vector<Bytes> &req);
 public:
 	Slave(SSDB *ssdb, SSDB *meta, const std::string ip, int port);
 	~Slave();
 	void start();
 	void stop();
 	static void on_connect(uv_connect_t *req, int status);
-		
+    static void afterWrite(uv_write_t* req, int status);
 	void set_id(const std::string &id);
 	std::string master_ip;
     int master_port;
+    write_req_t *resp;
 };
 
 #endif

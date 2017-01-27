@@ -25,6 +25,7 @@ public:
     SSDBImpl();
     virtual ~SSDBImpl();
 
+    virtual Iterator* iterator(const std::string &start, const std::string &end, uint64_t limit);
     virtual int set(const Bytes &key, const Bytes &val);
     virtual int del(const Bytes &key);
     virtual int get(const Bytes &key, std::string *val);

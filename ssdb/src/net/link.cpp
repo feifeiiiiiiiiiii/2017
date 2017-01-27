@@ -9,10 +9,9 @@
 
 Link::Link() {
     input = new Buffer(INIT_BUFFER_SIZE);
-    output = new Buffer(INIT_BUFFER_SIZE);
     client = (uv_stream_t *) malloc(sizeof(uv_tcp_t));
     redis = new RedisLink();
-    recv_bytes.clear();
+    recv_data.clear();
 
     create_time = millitime();
     active_time = create_time;
@@ -21,9 +20,6 @@ Link::Link() {
 Link::~Link() {
     if(input) {
         delete input;
-    }
-    if(output) {
-        delete output;
     }
     if(redis) {
         delete redis;
@@ -36,7 +32,6 @@ Link::~Link() {
 void Link::onRead(uv_stream_t* client, ssize_t nread, const uv_buf_t* buf) {
     Link *link = (Link *)client->data;
     NetworkServer *net = (NetworkServer *)link->data;
-    write_req_t *resp;
 
     if(nread <= 0) {
         return;
@@ -69,17 +64,6 @@ void Link::onRead(uv_stream_t* client, ssize_t nread, const uv_buf_t* buf) {
     }
 
     free(buf->base);
-    if(link->output->empty()) return;
-
-    // init output pointer
-    resp = (write_req_t *) malloc(sizeof(write_req_t));
-    resp->data = link;
-    resp->nread = link->output->size();
-    resp->buf = uv_buf_init(link->output->data(), link->output->size());
-
-    if (uv_write(&resp->req, client, &resp->buf, 1, Link::afterWrite)) {
-        log_debug("uv_write failed");
-    }
     return;
 error:
     free(buf->base);
@@ -91,11 +75,12 @@ error:
 }
 
 const std::vector<Bytes>* Link::recv_req() {
-    log_debug("input size = %d", input->size());
-    recv_bytes.clear();
-    if(input->size() <= 0) {
-        return &recv_bytes;
-    }
+    this->recv_data.clear();
+
+	if(input->empty()){
+		return &this->recv_data;
+	}
+
 	// TODO: 记住上回的解析状态
 	int parsed = 0;
 	int size = input->size();
@@ -110,11 +95,16 @@ const std::vector<Bytes>* Link::recv_req() {
 	
 	// Redis protocol supports
 	if(head[0] == '*'){
-		const std::vector<Bytes> *req = redis->recv_req(input);
-        if(req != NULL) {
-            recv_bytes = *req;
+		if(redis == NULL){
+			redis = new RedisLink();
 		}
-        return req;
+		const std::vector<Bytes> *ret = redis->recv_req(input);
+		if(ret){
+			this->recv_data = *ret;
+			return &this->recv_data;
+		}else{
+			return NULL;
+		}
 	}
 
 	while(size > 0){
@@ -129,7 +119,7 @@ const std::vector<Bytes>* Link::recv_req() {
 			// packet end
 			parsed += head_len;
 			input->decr(parsed);
-			return &recv_bytes;;
+			return &this->recv_data;;
 		}
 		if(head[0] < '0' || head[0] > '9'){
 			//log_warn("bad format");
@@ -154,7 +144,7 @@ const std::vector<Bytes>* Link::recv_req() {
 			break;
 		}
 
-		recv_bytes.push_back(Bytes(body, body_len));
+		this->recv_data.push_back(Bytes(body, body_len));
 
 		head += head_len + body_len;
 		parsed += head_len + body_len;
@@ -173,6 +163,7 @@ const std::vector<Bytes>* Link::recv_req() {
 			break;
 		}
 		if(parsed > MAX_PACKET_SIZE){
+			 //log_warn("fd: %d, exceed max packet size, parsed: %d", this->sock, parsed);
 			 return NULL;
 		}
 	}
@@ -181,28 +172,24 @@ const std::vector<Bytes>* Link::recv_req() {
 		input->nice();
 		if(input->space() == 0){
 			if(input->grow() == -1){
+				//log_error("fd: %d, unable to resize input buffer!", this->sock);
 				return NULL;
 			}
+			//log_debug("fd: %d, resize input buffer, %s", this->sock, input->stats().c_str());
 		}
 	}
 
-    recv_bytes.clear();
 	// not ready
-    return &recv_bytes;
+	this->recv_data.clear();
+	return &this->recv_data;
 }
 
-void Link::afterWrite(uv_write_t* req, int status) {
+void Link::afterWrite(uv_write_t* req, int status) {  
     write_req_t* resp;
     resp = (write_req_t*) req;
 
-    int nread = resp->nread;
-    Link* link = (Link *)resp->data;
-    log_debug("after write %d\n", nread);
-
-	link->output->decr(nread);
-    assert(link != NULL);
-
-    free(req);
+    if(resp->buf.base) free(resp->buf.base);
+    if(resp) free(resp);
     if (status == 0) {
         return;
     }
@@ -231,28 +218,37 @@ int Link::proc(ProcJob *job) {
         job->time_proc = 1000 * (millitime() - job->stime) - job->time_wait;
     } while(0);
 
-	return job->link->append2buffer(job->resp.resp);
+	return job->link->send(job->resp.resp);
 }
 
-int Link::append2buffer(const std::vector<std::string> &resp) {
-    return this->redis->send_resp(this->output, resp);
+int Link::send(const std::vector<std::string> &res) {
+    Buffer *output = new Buffer(10);
+    this->redis->send_resp(output, res);
+    // init output pointer
+    write_req_t *resp = (write_req_t *) malloc(sizeof(write_req_t));
+    resp->buf = uv_buf_init(output->data(), output->size());
+
+    if (uv_write(&resp->req, client, &resp->buf, 1, Link::afterWrite)) {
+        log_debug("uv_write failed");
+    }
+    return 0;
 }
 
 int Link::send(const Bytes &s1, const Bytes &s2) {
+    Buffer *output = new Buffer(s1.size() + s2.size() + 1);
     output->append_record(s1);
     output->append_record(s2);
     output->append('\n');
 
     // init output pointer
     write_req_t *resp = (write_req_t *) malloc(sizeof(write_req_t));
-    resp->data = this;
-    resp->nread = output->size();
     resp->buf = uv_buf_init(output->data(), output->size());
     uv_write(&resp->req, client, &resp->buf, 1, Link::afterWrite);
     return 0;
 }
 
 int Link::send(const Bytes &s1, const Bytes &s2, const Bytes &s3, const Bytes &s4){
+    Buffer *output = new Buffer(s1.size() + s2.size() + s3.size() + s4.size() + 1);
     output->append_record(s1);
     output->append_record(s2);
     output->append_record(s3);
@@ -260,19 +256,17 @@ int Link::send(const Bytes &s1, const Bytes &s2, const Bytes &s3, const Bytes &s
     output->append('\n');
 
     write_req_t *resp = (write_req_t *) malloc(sizeof(write_req_t));
-    resp->data = this;
-    resp->nread = output->size();
     resp->buf = uv_buf_init(output->data(), output->size());
     uv_write(&resp->req, client, &resp->buf, 1, Link::afterWrite);
     return 0;
 }
 
 int Link::send(const Bytes &s1){
+    Buffer *output = new Buffer(s1.size() + 1);
     output->append_record(s1);
     output->append('\n');
     write_req_t *resp = (write_req_t *) malloc(sizeof(write_req_t));
-    resp->data = this;
-    resp->nread = output->size();
+    
     resp->buf = uv_buf_init(output->data(), output->size());
     uv_write(&resp->req, client, &resp->buf, 1, Link::afterWrite);
     return 0;

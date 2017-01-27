@@ -102,7 +102,7 @@ leveldb::Status BinlogQueue::commit(){
 	leveldb::Status s = db->Write(write_opts, &batch);
     if(s.ok()){
         last_seq = tran_seq;
-        log_info("last_seq tran_seq %d", tran_seq);
+        //log_info("last_seq tran_seq %d", tran_seq);
         tran_seq = 0;
     }
 	return s;
@@ -151,3 +151,37 @@ int BinlogQueue::find_last(Binlog *log) const {
 	return ret;
 }
 
+int BinlogQueue::get(uint64_t seq, Binlog *log) const{
+    std::string val;
+    leveldb::Status s = db->Get(leveldb::ReadOptions(), encode_seq_key(seq), &val);
+    if(s.ok()){
+        if(log->load(val) != -1){
+            return 1;
+        }
+    }
+    return 0;
+}
+
+int BinlogQueue::find_next(uint64_t next_seq, Binlog *log) const{
+    if(this->get(next_seq, log) == 1){
+        return 1;
+    }
+    uint64_t ret = 0;
+    std::string key_str = encode_seq_key(next_seq);
+    leveldb::ReadOptions iterate_options;
+    leveldb::Iterator *it = db->NewIterator(iterate_options);
+    it->Seek(key_str);
+    if(it->Valid()){
+        leveldb::Slice key = it->key();
+        if(decode_seq_key(key) != 0){
+            leveldb::Slice val = it->value();
+            if(log->load(val) == -1){
+                ret = -1;
+            }else{
+                ret = 1;
+            }
+        }
+    }
+    delete it;
+    return ret;
+}

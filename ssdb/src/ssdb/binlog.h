@@ -62,6 +62,8 @@ public:
     void add_log(char type, char cmd, const std::string &key);
 
     int find_last(Binlog *log) const;
+    int get(uint64_t seq, Binlog *log) const;
+    int find_next(uint64_t next_seq, Binlog *log) const;
 
 };
 

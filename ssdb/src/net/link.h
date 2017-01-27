@@ -16,13 +16,11 @@
 typedef struct {
     uv_write_t req;
     uv_buf_t buf;
-    int nread;
-    void *data;
 } write_req_t;
 
 class Link {
 private:
-	std::vector<Bytes> recv_bytes;
+	std::vector<Bytes> recv_data;
     RedisLink *redis;
 public:
     uv_stream_t *client;
@@ -34,13 +32,12 @@ public:
     Link();
     ~Link();
     Buffer *input;
-    Buffer *output;
 
     const std::vector<Bytes>* last_recv(){
-        return &recv_bytes;
+        return &recv_data;
     }
 
-    int append2buffer(const std::vector<std::string> &resp);
+    int send(const std::vector<std::string> &resp);
     int send(const Bytes &s1);
     int send(const Bytes &s1, const Bytes &s2);
     int send(const Bytes &s1, const Bytes &s2, const Bytes &s3, const Bytes &s4);

@@ -138,3 +138,15 @@ int SSDBImpl::raw_get(const Bytes &key, std::string *val){
 	}
 	return 1;
 }
+
+Iterator* SSDBImpl::iterator(const std::string &start, const std::string &end, uint64_t limit){
+    leveldb::Iterator *it;
+    leveldb::ReadOptions iterate_options;
+    iterate_options.fill_cache = false;
+    it = ldb->NewIterator(iterate_options);
+    it->Seek(start);
+    if(it->Valid() && it->key() == start){
+        it->Next();
+    }
+    return new Iterator(it, end, limit);
+}

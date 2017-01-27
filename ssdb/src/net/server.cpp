@@ -6,6 +6,7 @@ NetworkServer::NetworkServer() {
 }
 
 NetworkServer::~NetworkServer() {
+    if(loop) free(loop);
 }
 
 NetworkServer* NetworkServer::init(const Config *cf) {
@@ -18,7 +19,7 @@ NetworkServer* NetworkServer::init(const Config *cf) {
         return NULL;
     }
 
-    serv->loop = uv_default_loop();
+    serv->loop = uv_loop_new();
 
     // TODO config
     r = uv_ip4_addr(cf->ip.c_str(), cf->port, &addr);
@@ -54,7 +55,6 @@ NetworkServer* NetworkServer::init(const Config *cf) {
 }
 
 void NetworkServer::acceptLink(uv_stream_t *server, int status) {
-    uv_stream_t* stream;
     int r;
 
     if (status != 0) {
@@ -65,10 +65,11 @@ void NetworkServer::acceptLink(uv_stream_t *server, int status) {
     NetworkServer *serv = (NetworkServer *)server->data;
     Link *link = serv->newLink();
     
-    uv_tcp_init(serv->loop, link->client);
-    if (uv_accept(server, (uv_stream_t*) link->client) == 0) {
+    uv_tcp_init(serv->loop, (uv_tcp_t *)link->client);
+    if (uv_accept(server, link->client) == 0) {
+        printf("accept new link\n");
         serv->link_count++;
-        uv_read_start((uv_stream_t*) link->client, Link::allocBuffer, Link::onRead);
+        uv_read_start(link->client, Link::allocBuffer, Link::onRead);
     }
     else {
         printf("direct remove link\n");

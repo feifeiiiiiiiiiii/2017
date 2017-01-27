@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <string>
+#include "iterator.h"
 
 class Bytes;
 class Config;
@@ -13,6 +14,7 @@ public:
     virtual ~SSDB() {}
 
 	static SSDB* open(const Config *cf, std::string dir);
+    virtual Iterator* iterator(const std::string &start, const std::string &end, uint64_t limit) = 0;
     virtual int set(const Bytes &key, const Bytes &val) = 0;
     virtual int del(const Bytes &key) = 0;
     virtual int get(const Bytes &key, std::string *val) = 0;
