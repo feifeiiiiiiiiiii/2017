@@ -22,29 +22,28 @@ typedef struct {
 
 class Link {
 private:
-    Buffer *input;
-    Buffer *output;
-
 	std::vector<Bytes> recv_bytes;
     RedisLink *redis;
-
-
 public:
-    uv_tcp_t *client;
+    uv_stream_t *client;
     void *data;
-    write_req_t *resp;
-
+    
     double create_time;
     double active_time;
 
     Link();
     ~Link();
+    Buffer *input;
+    Buffer *output;
 
-    int fd() const {
-        return client->u.fd;
+    const std::vector<Bytes>* last_recv(){
+        return &recv_bytes;
     }
 
     int append2buffer(const std::vector<std::string> &resp);
+    int send(const Bytes &s1);
+    int send(const Bytes &s1, const Bytes &s2);
+    int send(const Bytes &s1, const Bytes &s2, const Bytes &s3, const Bytes &s4);
 
     static void allocBuffer(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf) {
         buf->base = (char *)malloc(suggested_size);
@@ -62,6 +61,7 @@ public:
     }
 
     const std::vector<Bytes> *recv_req();
+
 };
 
 #endif
