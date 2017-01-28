@@ -544,9 +544,6 @@ int RedisLink::parse_req(Buffer *input){
 		parsed += (lf - ptr);
 		
 		int len = (int)strtol(ptr + 1, NULL, 10); // ptr + 1: skip '$' or '*'
-		if(errno == EINVAL){
-			return -1;
-		}
 		ptr = lf;
 		if(len < 0){
 			return -1;
