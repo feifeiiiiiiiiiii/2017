@@ -33,10 +33,6 @@ public:
     ~Link();
     Buffer *input;
 
-    const std::vector<Bytes>* last_recv(){
-        return &recv_data;
-    }
-
     int send(const std::vector<std::string> &resp);
     int send(const Bytes &s1);
     int send(const Bytes &s1, const Bytes &s2);

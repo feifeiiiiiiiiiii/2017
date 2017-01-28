@@ -84,12 +84,46 @@ void Slave::set_id(const std::string &id) {
 }
 
 void Slave::migrate_old_status() {
+	std::string old_key = "new.slave.status|" + this->id_;
+	std::string val;
+	int old_found = meta->raw_get(old_key, &val);
+	if(!old_found){
+		return;
+	}
+	if(val.size() < sizeof(uint64_t)){
+		log_error("invalid format of status");
+		return;
+	}
+	last_seq = *((uint64_t *)(val.data()));
+	last_key.assign(val.data() + sizeof(uint64_t), val.size() - sizeof(uint64_t));
+	// migrate old status
+	log_info("migrate old version slave status to new format, last_seq: %" PRIu64 ", last_key: %s",
+		last_seq, hexmem(last_key.data(), last_key.size()).c_str());
+	
+	save_status();
+	if(meta->raw_del(old_key) == -1){
+		log_fatal("meta db error!");
+		exit(1);
+	}
 }
 
 void Slave::load_status(){
+	std::string key;
+	std::string seq;
+	meta->hget(status_key(), "last_key", &key);
+	meta->hget(status_key(), "last_seq", &seq);
+	if(!key.empty()){
+		this->last_key = key;
+	}
+	if(!seq.empty()){
+		this->last_seq = str_to_uint64(seq);
+	}
 }
 
 void Slave::save_status(){
+	std::string seq = str(this->last_seq);
+	meta->hset(status_key(), "last_key", this->last_key);
+	meta->hset(status_key(), "last_seq", seq);
 }
 
 std::string Slave::status_key() {

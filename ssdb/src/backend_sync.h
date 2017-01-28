@@ -26,6 +26,7 @@ private:
     struct run_arg{
         const Link *link;
         const BackendSync *backend;
+		std::vector<Bytes> req;
     };
 	Mutex mutex;
 	std::map<pthread_t, Client *> workers;
@@ -34,7 +35,7 @@ public:
 	BackendSync(SSDBImpl *ssdb);
 	~BackendSync();
 
-    void proc(const Link *link);
+    void proc(const Link *link, const std::vector<Bytes> *req);
 };
 
 struct BackendSync::Client{
@@ -54,7 +55,7 @@ struct BackendSync::Client{
 	
 	Client(const BackendSync *backend);
 	~Client();
-	void init();
+	void init(const std::vector<Bytes> *req);
 	void reset();
 	void noop();
 	int copy();

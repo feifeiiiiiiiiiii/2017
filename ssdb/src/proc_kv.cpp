@@ -46,3 +46,22 @@ int proc_del(NetworkServer *net, Link *link, const Request &req, Response *resp)
     }
 	return 0;
 }
+
+int proc_hset(NetworkServer *net, Link *link, const Request &req, Response *resp){
+	CHECK_NUM_PARAMS(4);
+	SSDBServer *serv = (SSDBServer *)net->data;
+
+	int ret = serv->ssdb->hset(req[1], req[2], req[3]);
+	resp->reply_bool(ret);
+	return 0;
+}
+
+int proc_hget(NetworkServer *net, Link *link, const Request &req, Response *resp){
+	CHECK_NUM_PARAMS(3);
+	SSDBServer *serv = (SSDBServer *)net->data;
+
+	std::string val;
+	int ret = serv->ssdb->hget(req[1], req[2], &val);
+	resp->reply_get(ret, &val);
+	return 0;
+}

@@ -30,6 +30,11 @@ public:
     virtual int del(const Bytes &key);
     virtual int get(const Bytes &key, std::string *val);
 
+    virtual int hset(const Bytes &name, const Bytes &key, const Bytes &val, char log_type=BinlogType::SYNC);
+	virtual int hget(const Bytes &name, const Bytes &key, std::string *val);
+    virtual int64_t hsize(const Bytes &name);
+
+
     virtual int raw_set(const Bytes &key, const Bytes &val);
     virtual int raw_del(const Bytes &key);
     virtual int raw_get(const Bytes &key, std::string *val);

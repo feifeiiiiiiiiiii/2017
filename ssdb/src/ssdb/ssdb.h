@@ -19,6 +19,11 @@ public:
     virtual int del(const Bytes &key) = 0;
     virtual int get(const Bytes &key, std::string *val) = 0;
 
+    virtual int hset(const Bytes &name, const Bytes &key, const Bytes &val, char log_type=BinlogType::SYNC) = 0;
+	virtual int hget(const Bytes &name, const Bytes &key, std::string *val) = 0;
+    virtual int64_t hsize(const Bytes &name) = 0;
+
+
     virtual int raw_set(const Bytes &key, const Bytes &val) = 0;
     virtual int raw_del(const Bytes &key) = 0;
     virtual int raw_get(const Bytes &key, std::string *val) = 0;
