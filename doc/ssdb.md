@@ -11,6 +11,16 @@
 
 ```
 
+## Master-Slave
+
+```
+
+SSDB采用的是Master-Slave模式，Slave会存储一个last_seq序号来确定下次同步master的数据区间, Master上会存储了binlog日志,每个binlog会有具体seq和command操作,同步的时候根据这个从原始存储结构中
+读取具体的数据,然后发送给Salve，Slave依据发送的命令redo就行并且last_seq的值，Slave不会去向Master汇报这次操作的成功与否的状态，因为SSDB的Slave遇到redo不成功的时候就停止操作了，这样就保证了redo
+的原子性，所以SSDB这点上很黄很暴力。
+
+```
+
 ## TODO
 1. 补充一下自己对SSDB内部存储结构的实现原理包括日志的记录 
 2. 弄懂ssdb的slave实现原理&分布式存储
