@@ -18,13 +18,13 @@ ssdb_server.o: ssdb_server.cpp
 	${CXX} -c ssdb_server.cpp -I${LIBUV_INC} -I${LEVELDB_INC}
 
 proc_kv.o: proc_kv.cpp
-	${CXX} -c proc_kv.cpp -I${LEVELDB_INC}
+	${CXX} -c proc_kv.cpp -I${LEVELDB_INC} -I${LIBUV_INC}
 
 serv.o: serv.h serv.cpp ssdb/ssdb_impl.h net/server.h net/proc.h proc_kv.cpp backend_sync.h
-	${CXX} -c serv.cpp -I${LEVELDB_INC}
+	${CXX} -c serv.cpp -I${LEVELDB_INC} -I${LIBUV_INC}
 
 server.o: net/link.h net/proc.h util/config.h
-	${CXX} -c net/server.cpp
+	${CXX} -c net/server.cpp -I${LIBUV_INC} -I${LEVELDB_INC}
 
 link_redis.o: util/bytes.h
 	${CXX} -c net/link_redis.cpp
@@ -48,13 +48,13 @@ config.o: util/config.h util/json.hpp
 	${CXX} -c util/config.cpp -std=c++11
 
 link.o: net/proc.h util/bytes.h net/link_redis.h serv.h include.h
-	${CXX} -c net/link.cpp -I${LEVELDB_INC}
+	${CXX} -c net/link.cpp -I${LEVELDB_INC} -I${LIBUV_INC}
 
 proc.o: net/proc.h net/resp.h util/bytes.h
-	${CXX} -c net/proc.cpp
+	${CXX} -c net/proc.cpp -I${LIBUV_INC}
 
 slave.o: slave.h ssdb/ssdb_impl.h ssdb/binlog.h slave.cpp
-	${CXX} -c slave.cpp -I${LEVELDB_INC}
+	${CXX} -c slave.cpp -I${LEVELDB_INC} -I${LIBUV_INC}
 
 backend_sync.o: include.h ssdb/ssdb_impl.h net/link.h ssdb/binlog.h backend_sync.cpp
 	${CXX} -c backend_sync.cpp -I${LEVELDB_INC} -I${LIBUV_INC}
