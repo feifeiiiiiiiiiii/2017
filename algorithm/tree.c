@@ -17,6 +17,7 @@ tree_node_t *tree_successor(tree_node_t *p);
 tree_node_t *tree_minimum(tree_node_t *p);
 tree_node_t *tree_maximum(tree_node_t *p);
 tree_node_t *tree_precursor(tree_node_t *p);
+void transplant(tree_node_t **root, tree_node_t *u, tree_node_t *v);
 void tree_inorder_walk(tree_node_t *p);
 void tree_free(tree_node_t *p);
 
@@ -107,6 +108,39 @@ int insert(tree_node_t **root, int key) {
   return 0;
 }
 
+void transplant(tree_node_t **root, tree_node_t *u, tree_node_t *v) {
+  if(u->parent == NULL) {
+    *root = v;
+  } else if(u == u->parent->left) {
+    u->parent->left = v;
+  } else {
+    u->parent->right = v;
+  }
+  if(v != NULL) {
+    v->parent = u->parent;
+  }
+}
+
+int tree_delete(tree_node_t **root, int key) {
+  tree_node_t *p = tree_search(*root, key);
+  if(p == NULL) return -1;
+  if(p->left == NULL) transplant(root, p, p->right);
+  else if(p->right == NULL) {
+    transplant(root, p, p->left);
+  } else {
+    tree_node_t *y = tree_minimum(p->right);
+    if(y->parent != p) {
+      transplant(root, y, y->right);
+      y->right = p->right;
+      y->right->parent = y;
+    }
+    transplant(root, p, y);
+    y->left = p->left;
+    y->left->parent = y;
+  }
+  return 0;
+}
+
 void tree_inorder_walk(tree_node_t *p) {
   if(p == NULL) return;
   tree_inorder_walk(p->left);
@@ -144,6 +178,11 @@ int main() {
   } else {
     printf("not found\n");
   }
+
+  tree_delete(&root, 3);
+  tree_delete(&root, -10);
+  tree_delete(&root, 1);
+  tree_delete(&root, 2);
 
   printf("print order: ");
   tree_inorder_walk(root);
