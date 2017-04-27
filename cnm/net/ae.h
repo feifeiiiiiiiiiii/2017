@@ -15,11 +15,13 @@
 
 #define AE_NOMORE -1
 
-#include <time.h>
+#include <sys/time.h>
+#include "tree.h"
 
 struct aeEventLoop;
 
 typedef void aeFileProc(struct aeEventLoop *eventLoop, int fd, void *clientData, int mask);
+typedef void aeTimeProc(struct aeEventLoop *eventLoop, void *clientData);
 
 typedef struct aeFileEvent {
     int mask; /* one of AE_(READABLE|WRITEABLE) */
@@ -33,12 +35,22 @@ typedef struct aeFireEvent {
 		int mask;
 } aeFireEvent;
 
+typedef struct aeTimeEvent {
+		struct timeval timeout;
+		aeTimeProc *timeProc;
+		int mask;
+		void *clientData;
+		RB_ENTRY(aeTimeEvent) timeNode;
+} aeTimeEvent;
+
 typedef struct aeEventLoop {
     int maxfd;
     int setsize;
-    time_t lastTime;
+		struct timeval eventtv;
     aeFileEvent *events; /* fd as idx */
 		aeFireEvent *fired; /* active events */
+		aeTimeEvent timeEvent;
+		RB_HEAD(eventTree, aeTimeEvent) timetree;
     int stop;
 		void *apidata; /* ptr to epoll state */
 } aeEventLoop;
@@ -49,5 +61,7 @@ void aeStop(aeEventLoop *eventLoop);
 int aeCreateFileEvent(aeEventLoop *eventLoop, int fd, int mask, aeFileProc *proc, void *clientData);
 int aeProcessEvents(aeEventLoop *eventLoop, int flags);
 void aeMain(aeEventLoop *eventLoop);
+int aeCreateTimeEvent(aeEventLoop *eventLoop, struct timeval *tv, aeTimeProc *proc, void *clientData, int mask);
+void aeProcessTimeEvents(aeEventLoop *eventLoop);
 
 #endif /* __AE_H_ */
