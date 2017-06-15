@@ -140,6 +140,8 @@ int aeCreateTimeEvent(aeEventLoop *eventLoop, struct timeval *tv, aeTimeProc *pr
 		if(te == NULL) return AE_ERR;
 		te->timeProc = proc;
 		te->mask = mask;
+		te->tv.tv_sec = tv->tv_sec;
+		te->tv.tv_usec = tv->tv_usec;
 
 		struct timeval now;
 
@@ -160,7 +162,13 @@ void aeProcessTimeEvents(aeEventLoop *eventLoop) {
 				}
 
 				next = RB_NEXT(eventTree, &eventLoop->timetree, te);
-				te->timeProc(eventLoop, te->clientData);
+				int retval = te->timeProc(eventLoop, te->clientData);
+				if(retval != AE_NOMORE) {
+					struct timeval tv;
+					tv.tv_sec = te->tv.tv_sec;
+					tv.tv_usec = te->tv.tv_usec;
+					aeCreateTimeEvent(eventLoop, &tv, te->timeProc, te->clientData, 0);
+				}
 				RB_REMOVE(eventTree, &eventLoop->timetree, te);
 		}
 }

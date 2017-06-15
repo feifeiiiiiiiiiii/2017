@@ -21,7 +21,7 @@
 struct aeEventLoop;
 
 typedef void aeFileProc(struct aeEventLoop *eventLoop, int fd, void *clientData, int mask);
-typedef void aeTimeProc(struct aeEventLoop *eventLoop, void *clientData);
+typedef int  aeTimeProc(struct aeEventLoop *eventLoop, void *clientData);
 
 typedef struct aeFileEvent {
     int mask; /* one of AE_(READABLE|WRITEABLE) */
@@ -37,6 +37,7 @@ typedef struct aeFireEvent {
 
 typedef struct aeTimeEvent {
 		struct timeval timeout;
+		struct timeval tv;
 		aeTimeProc *timeProc;
 		int mask;
 		void *clientData;

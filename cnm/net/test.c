@@ -4,6 +4,21 @@
 
 static char neterr[ANET_ERR_LEN];
 static aeEventLoop *eventLoop;
+		struct timeval tv;
+
+int
+loop_forver_time_cb(aeEventLoop *eventLoop, void *arg)
+{
+	printf("forver timer\n");
+	return 1;
+}
+
+int
+loop_once_time_cb(aeEventLoop *eventLoop, void *arg)
+{
+	printf("loop_once\n");
+	return -1;
+}
 
 void acceptTcpHandler(aeEventLoop *el, int fd, void *privdata, int mask) {
 		printf("acceptTcpHandler\n");
@@ -25,7 +40,7 @@ int main() {
 
 		eventLoop = aeCreateEventLoop(1024);
 
-		fd = anetTcpServer(neterr, 6379, "127.0.0.1", 128);
+		fd = anetTcpServer(neterr, 6379, "0.0.0.0", 128);
 		if(fd == ANET_ERR) {
 				printf("anetTcpServer error %s\n", neterr);
 				return 0;
@@ -36,7 +51,11 @@ int main() {
 				printf("aeCreateFileEvent failed\n");
 				return 0;
 		}
-
+		
+	tv.tv_sec = random() % 10;
+	tv.tv_usec = random() % 5000L;
+	aeCreateTimeEvent(eventLoop, &tv, loop_forver_time_cb, NULL, 0);
+	aeCreateTimeEvent(eventLoop, &tv, loop_once_time_cb, NULL, 0);
 		aeMain(eventLoop);
 		return 0;
 }
