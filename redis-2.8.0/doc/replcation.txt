@@ -1,0 +1,30 @@
+redis replication 连接 master 过程
+
+初始 repl_state =  REDIS_REPL_CONNECTING
+
+注册读写事件设置回调函数为syncMaster
+
+syncMaster处理流程：
+    1. repl_state = REDIS_REPL_CONNECTING
+        发送 +PING 命令 并设置 repl_state = REDIS_REPL_RECEIVE_PONG
+
+    2. repl_state = REDIS_REPL_RECEIVE_PONG
+        调用syncReadLine读取收到的一行数据数据
+        如果出现-NOAUTH 或者 -ERR operation not permitted 或者 第一个字符为非'+' 则连接错误 否则进行第3步
+    
+    3. 如果设置密码
+        发送AUTH命令到master进行认证, 认证通过进行第4步
+
+    4. 发送replcation信息到master上
+        发送REPLCONF命令，附加replication listen-port信息到master上
+
+    5. 尝试部分同步
+        调用函数slaveTryPartialResynchronization 尝试是否只需要进行部分数据同步
+        如果返回结果PSYNC_CONTINUE 则表示master接收部分同步
+        如果返回结果为PSYNC_NOT_SUPPORTED 则表示不支持，需要发送sync命令去全量同步
+
+    6. 创建临时文件为了接收同步数据，重新注册fd的读事件注册readSyncBulkPayload，并设置repl_state = REDIS_REPL_TRANSFER 进行数据传输阶段
+
+    7. readSyncBulkPayload开始接收master传输的同步数据并写入文件存储,同步完成之后,rename文件
+        并加装数据
+        重新设置事件注册回调函数readQueryFromClient，开始接收正常master发送写操作指令到replcation,和普通的客户端读写一样 
