@@ -54,12 +54,10 @@ func (mr *MapReduce) RunMaster() *list.List {
 				select {
 				case worker = <- mr.registerChannel:
 					ok = mr.doTask(worker, idx, Map, mr.nReduce)
-				case worker = <- mr.idleChannel:
-					ok = mr.doTask(worker, idx, Map, mr.nReduce)
 				}
 				if ok {
 					mapChan <- idx
-					mr.idleChannel <- worker
+                    mr.registerChannel <- worker
 					return
 				}
 			}
@@ -82,12 +80,10 @@ func (mr *MapReduce) RunMaster() *list.List {
 				select {
 				case worker = <- mr.registerChannel:
 					ok = mr.doTask(worker, idx, Reduce, mr.nMap)
-				case worker = <- mr.idleChannel:
-					ok = mr.doTask(worker, idx, Reduce, mr.nMap)
 				}
 				if ok {
 					reduceChan <- idx
-					mr.idleChannel <- worker
+                    mr.registerChannel <- worker
 					return
 				}
 			}
