@@ -69,6 +69,8 @@ func (mr *MapReduce) RunMaster() *list.List {
 		<- mapChan
 	}
 
+    close(mapChan)
+
 	// 启动reduce worker
 	var reduceChan = make(chan int, mr.nReduce)
 	for i := 0; i < mr.nReduce; i++ {
@@ -94,6 +96,8 @@ func (mr *MapReduce) RunMaster() *list.List {
 	for i := 0; i < mr.nReduce; i++{
 		<- reduceChan
 	}
+    close(reduceChan)
+
 		
 	return mr.KillWorkers()
 }
