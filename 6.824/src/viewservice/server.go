@@ -18,6 +18,29 @@ type ViewServer struct {
 
 
 	// Your declarations here.
+    view            View
+    primaryAcked    uint
+    backupAcked     uint
+}
+
+func (vs *ViewServer) HasPrimary() bool {
+    return vs.view.Primary != ""
+}
+
+func (vs *ViewServer) HasBackup() bool {
+    return vs.view.Backup != ""
+}
+
+func (vs *ViewServer) Acked() bool {
+    return vs.primaryAcked == vs.view.Viewnum
+}
+
+func (vs *ViewServer) IsPrimary(me string) bool {
+    return vs.view.Primary == me
+}
+
+func (vs *ViewServer) IsBackup(me string) bool {
+    return vs.view.Backup == me
 }
 
 //
@@ -26,6 +49,36 @@ type ViewServer struct {
 func (vs *ViewServer) Ping(args *PingArgs, reply *PingReply) error {
 
 	// Your code here.
+
+    vs.mu.Lock()
+    defer vs.mu.Unlock()
+
+    // 处理刚接入 一定是primary 但是还没有acked
+    if vs.view.Viewnum == 0 && !vs.HasPrimary() {
+        vs.view.Viewnum++
+        vs.view.Primary = args.Me
+        vs.primaryAcked = 0
+    } else if vs.IsPrimary(args.Me) { // 发现当前ping的是primary
+        // viewnum == 0是重启之后重新接入,提升backup为primary
+        if args.Viewnum == 0 {
+            // 降级
+            if vs.view.Backup != "" {
+                vs.view.Primary = vs.view.Backup
+                vs.view.Backup = ""
+                vs.primaryAcked = 0
+                vs.view.Viewnum++
+            }
+        } else {
+            // 更新acked
+            vs.primaryAcked = vs.view.Viewnum
+        }
+    } else if !vs.HasBackup() && vs.Acked() {
+        vs.view.Backup = args.Me
+        vs.view.Viewnum++
+    } else if vs.IsBackup(args.Me) {
+    }
+
+    reply.View = vs.view
 
 	return nil
 }
@@ -36,6 +89,10 @@ func (vs *ViewServer) Ping(args *PingArgs, reply *PingReply) error {
 func (vs *ViewServer) Get(args *GetArgs, reply *GetReply) error {
 
 	// Your code here.
+    vs.mu.Lock()
+    defer vs.mu.Unlock()
+
+    reply.View = vs.view
 
 	return nil
 }
@@ -77,6 +134,9 @@ func StartServer(me string) *ViewServer {
 	vs := new(ViewServer)
 	vs.me = me
 	// Your vs.* initializations here.
+    vs.view = View{0, "", ""}
+    vs.primaryAcked = 0
+    vs.backupAcked = 0
 
 	// tell net/rpc about our RPC server and handlers.
 	rpcs := rpc.NewServer()
