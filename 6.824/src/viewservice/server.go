@@ -1,5 +1,6 @@
 package viewservice
 
+// 参考 https://github.com/Raynxxx/MIT-6.824
 import "net"
 import "net/rpc"
 import "log"
@@ -21,6 +22,9 @@ type ViewServer struct {
     view            View
     primaryAcked    uint
     backupAcked     uint
+    primaryTick     uint // 记录上次primary'ping 的tick
+    currentTick     uint // 记录当前tick
+    backupTick      uint // 记录backup's tick 方便为了提升backup->primary 设置primaryTick
 }
 
 func (vs *ViewServer) HasPrimary() bool {
@@ -58,6 +62,7 @@ func (vs *ViewServer) Ping(args *PingArgs, reply *PingReply) error {
         vs.view.Viewnum++
         vs.view.Primary = args.Me
         vs.primaryAcked = 0
+        vs.primaryTick = vs.currentTick
     } else if vs.IsPrimary(args.Me) { // 发现当前ping的是primary
         // viewnum == 0是重启之后重新接入,提升backup为primary
         if args.Viewnum == 0 {
@@ -66,16 +71,23 @@ func (vs *ViewServer) Ping(args *PingArgs, reply *PingReply) error {
                 vs.view.Primary = vs.view.Backup
                 vs.view.Backup = ""
                 vs.primaryAcked = 0
+                vs.primaryTick = vs.backupTick
                 vs.view.Viewnum++
             }
         } else {
             // 更新acked
-            vs.primaryAcked = vs.view.Viewnum
+            vs.primaryAcked = args.Viewnum
+            vs.primaryTick = vs.currentTick
         }
     } else if !vs.HasBackup() && vs.Acked() {
         vs.view.Backup = args.Me
         vs.view.Viewnum++
+        vs.backupTick = vs.currentTick
     } else if vs.IsBackup(args.Me) {
+        vs.backupTick = vs.currentTick
+        if(args.Viewnum == 0 && vs.Acked()) {
+            vs.view.Viewnum++
+        }
     }
 
     reply.View = vs.view
@@ -106,6 +118,26 @@ func (vs *ViewServer) Get(args *GetArgs, reply *GetReply) error {
 func (vs *ViewServer) tick() {
 
 	// Your code here.
+
+    vs.mu.Lock()
+    defer vs.mu.Unlock()
+    vs.currentTick++
+
+    // 判断primary是否超时
+    if vs.currentTick - vs.primaryTick >= DeadPings && vs.Acked() {
+        // 降级
+        vs.view.Primary = vs.view.Backup
+        vs.view.Backup = ""
+        vs.primaryAcked = 0
+        vs.primaryTick = vs.backupTick
+        vs.view.Viewnum++
+    }
+
+    // 判断backup是否超时
+    if vs.HasBackup() && vs.currentTick - vs.backupTick >= DeadPings && vs.Acked() {
+        vs.view.Backup = ""
+        vs.view.Viewnum++
+    }
 }
 
 //
@@ -137,6 +169,8 @@ func StartServer(me string) *ViewServer {
     vs.view = View{0, "", ""}
     vs.primaryAcked = 0
     vs.backupAcked = 0
+    vs.currentTick = 0
+    vs.primaryTick = 0
 
 	// tell net/rpc about our RPC server and handlers.
 	rpcs := rpc.NewServer()
