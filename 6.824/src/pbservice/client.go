@@ -11,6 +11,7 @@ import "math/big"
 type Clerk struct {
 	vs *viewservice.Clerk
 	// Your declarations here
+	view viewservice.View
 }
 
 // this may come in handy.
@@ -25,6 +26,7 @@ func MakeClerk(vshost string, me string) *Clerk {
 	ck := new(Clerk)
 	ck.vs = viewservice.MakeClerk(me, vshost)
 	// Your ck.* initializations here
+	ck.view = viewservice.View{}
 
 	return ck
 }
@@ -64,6 +66,13 @@ func call(srv string, rpcname string,
 	return false
 }
 
+func (ck *Clerk) updateView() {
+	view, ok := ck.vs.Get()
+	if ok == true {
+		ck.view = view
+	}
+}
+
 //
 // fetch a key's value from the current primary;
 // if they key has never been set, return "".
@@ -74,8 +83,14 @@ func call(srv string, rpcname string,
 func (ck *Clerk) Get(key string) string {
 
 	// Your code here.
+	ck.updateView()	
+	args := &GetArgs{}
+	args.Key = key
 
-	return "???"
+	var reply GetReply
+	
+	call(ck.view.Primary, "PBServer.Get", args, &reply)
+	return reply.Value
 }
 
 //
@@ -84,6 +99,15 @@ func (ck *Clerk) Get(key string) string {
 func (ck *Clerk) PutAppend(key string, value string, op string) {
 
 	// Your code here.
+	ck.updateView()
+	args := &PutAppendArgs{}
+	args.Key = key
+	args.Value = value
+	args.Op = op
+
+	var reply PutAppendReply
+	
+	call(ck.view.Primary, "PBServer.PutAppend", args, &reply)
 }
 
 //
