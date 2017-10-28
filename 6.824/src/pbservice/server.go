@@ -11,6 +11,7 @@ import "sync/atomic"
 import "os"
 import "syscall"
 import "math/rand"
+import "errors"
 
 
 
@@ -72,6 +73,9 @@ func (pb *PBServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error 
 		reply.Err = OK		
 	}
 
+	// 同步数据到backup上
+	pb.Forward(&ForwardArgs{Content: pb.db})
+	
 	return nil
 }
 
@@ -80,7 +84,7 @@ func (pb *PBServer) isPrimary() bool {
 }
 
 func (pb *PBServer) hasBackup() bool {
-	return pb.view.Backup == ""
+	return pb.view.Backup != ""
 }
 
 
@@ -97,8 +101,36 @@ func (pb *PBServer) tick() {
 	defer pb.mu.Unlock()
 
 	view, _ := pb.vs.Ping(pb.view.Viewnum)
-	pb.view = view
+	
+	// primary 发生改变, 发送primary‘s db到所有的backup上
+	if pb.isPrimary() && view.Backup != pb.view.Backup && view.Backup != "" {
+		pb.Forward(&ForwardArgs{Content: pb.db})
+	}
+	pb.view = view	
 }
+
+func (pb *PBServer) Forward(args *ForwardArgs) error {
+	if !pb.hasBackup() {
+		return nil
+	}
+	var reply ForwardReply
+	ok := call(pb.view.Backup, "PBServer.ProcessForward", args, &reply)
+	if !ok {
+		return errors.New("[Foward] failed to forward put")
+	}
+	return nil
+}
+
+func (pb *PBServer) ProcessForward(args *ForwardArgs, reply *ForwardReply) error {
+	pb.mu.Lock()
+	defer pb.mu.Unlock()
+
+	for key,value := range args.Content{
+		pb.db[key] = value
+	}
+	return nil
+}
+
 
 // tell the server to shut itself down.
 // please do not change these two functions.

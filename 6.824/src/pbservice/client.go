@@ -6,6 +6,7 @@ import "fmt"
 
 import "crypto/rand"
 import "math/big"
+import "time"
 
 
 type Clerk struct {
@@ -67,10 +68,11 @@ func call(srv string, rpcname string,
 }
 
 func (ck *Clerk) updateView() {
-	view, ok := ck.vs.Get()
-	if ok == true {
-		ck.view = view
+	view, ok := ck.vs.Ping(ck.view.Viewnum)
+	if ok != nil {
+		return
 	}
+	ck.view = view	
 }
 
 //
@@ -91,8 +93,14 @@ func (ck *Clerk) Get(key string) string {
 
 	var reply GetReply
 	
-	call(ck.view.Primary, "PBServer.Get", args, &reply)
-	return reply.Value
+	for {
+		ok := call(ck.view.Primary, "PBServer.Get", args, &reply)		
+		if ok {
+			return reply.Value
+		}
+		time.Sleep(viewservice.PingInterval)
+		ck.updateView()
+	}
 }
 
 //
@@ -111,7 +119,14 @@ func (ck *Clerk) PutAppend(key string, value string, op string) {
 
 	var reply PutAppendReply
 	
-	call(ck.view.Primary, "PBServer.PutAppend", args, &reply)
+	for {
+		ok := call(ck.view.Primary, "PBServer.PutAppend", args, &reply)		
+		if ok {
+			return
+		}
+		time.Sleep(viewservice.PingInterval)
+		ck.updateView()
+	}
 }
 
 //
