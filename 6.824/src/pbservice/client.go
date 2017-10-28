@@ -83,7 +83,9 @@ func (ck *Clerk) updateView() {
 func (ck *Clerk) Get(key string) string {
 
 	// Your code here.
-	ck.updateView()	
+	if ck.view.Viewnum == 0 {
+		ck.updateView()
+	}
 	args := &GetArgs{}
 	args.Key = key
 
@@ -99,7 +101,9 @@ func (ck *Clerk) Get(key string) string {
 func (ck *Clerk) PutAppend(key string, value string, op string) {
 
 	// Your code here.
-	ck.updateView()
+	if ck.view.Viewnum == 0 {
+		ck.updateView()
+	}
 	args := &PutAppendArgs{}
 	args.Key = key
 	args.Value = value
