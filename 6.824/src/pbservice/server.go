@@ -25,8 +25,6 @@ type PBServer struct {
 
 	db 		   	map[string]string
 	view		viewservice.View
-	viewnum 	uint
-	isPrimary	bool
 }
 
 
@@ -37,7 +35,7 @@ func (pb *PBServer) Get(args *GetArgs, reply *GetReply) error {
 	pb.mu.Lock()
 	defer pb.mu.Unlock()
 
-	if !pb.isPrimary {
+	if !pb.isPrimary() {
 		reply.Err = ErrWrongServer
 		return nil
 	}
@@ -59,7 +57,7 @@ func (pb *PBServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error 
 	pb.mu.Lock()
 	defer pb.mu.Unlock()
 
-	if !pb.isPrimary {
+	if !pb.isPrimary() {
 		reply.Err = ErrWrongServer
 		return nil
 	}
@@ -77,6 +75,14 @@ func (pb *PBServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error 
 	return nil
 }
 
+func (pb *PBServer) isPrimary() bool {
+	return pb.view.Primary == pb.me
+}
+
+func (pb *PBServer) hasBackup() bool {
+	return pb.view.Backup == ""
+}
+
 
 //
 // ping the viewserver periodically.
@@ -90,15 +96,8 @@ func (pb *PBServer) tick() {
 	pb.mu.Lock()
 	defer pb.mu.Unlock()
 
-	pb.viewnum = pb.view.Viewnum
-	view, _ := pb.vs.Ping(pb.viewnum)
+	view, _ := pb.vs.Ping(pb.view.Viewnum)
 	pb.view = view
-	fmt.Println(pb.viewnum, "p = ", view.Primary, "b = ", view.Backup)
-	if pb.view.Primary == pb.me {
-		pb.isPrimary = true
-	} else {
-		pb.isPrimary = false
-	}
 }
 
 // tell the server to shut itself down.
@@ -133,11 +132,8 @@ func StartServer(vshost string, me string) *PBServer {
 	pb.vs = viewservice.MakeClerk(me, vshost)
 	// Your pb.* initializations here.
 
-	viewservice.StartServer(vshost)	
 	pb.db = make(map[string]string)
 	pb.view = viewservice.View{0, "", ""}
-	pb.isPrimary = false
-	pb.viewnum = 0
 
 	rpcs := rpc.NewServer()
 	rpcs.Register(pb)
