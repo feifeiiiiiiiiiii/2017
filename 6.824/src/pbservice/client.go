@@ -7,6 +7,7 @@ import "fmt"
 import "crypto/rand"
 import "math/big"
 import "time"
+import "strconv"
 
 
 type Clerk struct {
@@ -116,6 +117,7 @@ func (ck *Clerk) PutAppend(key string, value string, op string) {
 	args.Key = key
 	args.Value = value
 	args.Op = op
+	args.Uid =  strconv.FormatInt(nrand(), 10)
 
 	var reply PutAppendReply
 	

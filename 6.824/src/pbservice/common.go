@@ -15,6 +15,7 @@ type PutAppendArgs struct {
 	// You'll have to add definitions here.
 
 	Op 	  string
+	Uid   string
 	// Field names must start with capital letters,
 	// otherwise RPC will break.
 }

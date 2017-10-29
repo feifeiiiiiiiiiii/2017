@@ -63,6 +63,13 @@ func (pb *PBServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error 
 		return nil
 	}
 
+	var key = "uid_" + pb.me + "_" + args.Uid
+	if pb.db[key] != "" {
+		return nil
+	}
+
+	pb.db[key] = args.Uid
+
 	value := pb.db[args.Key]
 
 	if args.Op == "Append" {
