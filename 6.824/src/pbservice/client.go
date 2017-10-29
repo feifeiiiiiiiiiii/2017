@@ -14,6 +14,7 @@ type Clerk struct {
 	vs *viewservice.Clerk
 	// Your declarations here
 	view viewservice.View
+	me string
 }
 
 // this may come in handy.
@@ -29,7 +30,7 @@ func MakeClerk(vshost string, me string) *Clerk {
 	ck.vs = viewservice.MakeClerk(me, vshost)
 	// Your ck.* initializations here
 	ck.view = viewservice.View{}
-
+	ck.me = strconv.FormatInt(nrand(), 10)
 	return ck
 }
 
@@ -118,6 +119,7 @@ func (ck *Clerk) PutAppend(key string, value string, op string) {
 	args.Value = value
 	args.Op = op
 	args.Uid =  strconv.FormatInt(nrand(), 10)
+	args.Client = ck.me
 
 	var reply PutAppendReply
 	

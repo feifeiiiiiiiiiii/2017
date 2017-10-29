@@ -63,7 +63,7 @@ func (pb *PBServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error 
 		return nil
 	}
 
-	var key = "uid_" + pb.me + "_" + args.Uid
+	var key = "uid_" + args.Client + "_" + args.Uid
 	if pb.db[key] != "" {
 		return nil
 	}
@@ -80,6 +80,7 @@ func (pb *PBServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) error 
 		reply.Err = OK		
 	}
 
+	//fmt.Println("backup ", pb.db, pb.view.Primary, pb.view.Backup)
 	// 同步数据到backup上
 	pb.Forward(&ForwardArgs{Content: pb.db})
 	
@@ -109,11 +110,12 @@ func (pb *PBServer) tick() {
 
 	view, _ := pb.vs.Ping(pb.view.Viewnum)
 	
-	// primary 发生改变, 发送primary‘s db到所有的backup上
-	if pb.isPrimary() && view.Backup != pb.view.Backup && view.Backup != "" {
+	// backup 发生改变, 发送primary‘s db到所有的backup上
+	needForward := view.Backup != "" && view.Backup != pb.view.Backup && pb.isPrimary()
+	pb.view = view	
+	if needForward {
 		pb.Forward(&ForwardArgs{Content: pb.db})
 	}
-	pb.view = view	
 }
 
 func (pb *PBServer) Forward(args *ForwardArgs) error {
@@ -131,7 +133,7 @@ func (pb *PBServer) Forward(args *ForwardArgs) error {
 func (pb *PBServer) ProcessForward(args *ForwardArgs, reply *ForwardReply) error {
 	pb.mu.Lock()
 	defer pb.mu.Unlock()
-
+	
 	for key,value := range args.Content{
 		pb.db[key] = value
 	}
