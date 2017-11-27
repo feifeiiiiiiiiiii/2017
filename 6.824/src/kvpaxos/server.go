@@ -27,6 +27,10 @@ type Op struct {
 	// Your definitions here.
 	// Field names must start with capital letters,
 	// otherwise RPC will break.
+    Op      string
+    seq     int64
+    Key     string
+    Value   string
 }
 
 type KVPaxos struct {
@@ -38,11 +42,32 @@ type KVPaxos struct {
 	px         *paxos.Paxos
 
 	// Your definitions here.
+    kv          map[string]string
+    seq         map[int64]bool
+    logs        []Op
+    lastSeq     int
 }
 
+func (kv *KVPaxos) wait(seq int) Op {
+    to := 10 * time.Millisecond
+    for {
+        status, v := kv.px.Status(seq)
+        if status == paxos.Decided {
+            kvlog, _ := v.(Op)
+            return kvlog
+        }
+        time.Sleep(to)
+        if to < 10 * time.Second {
+            to *= 2
+        }
+    }
+}
 
 func (kv *KVPaxos) Get(args *GetArgs, reply *GetReply) error {
 	// Your code here.
+    KVPaxos.mu.Lock()
+    defer KVPaxos.mu.Unlock()
+
 	return nil
 }
 
