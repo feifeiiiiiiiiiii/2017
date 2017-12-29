@@ -1,0 +1,30 @@
+redis event 事件处理机制(ae.h,ae.c,ae_epoll.c)
+
+1. 网络事件(Linux)
+
+    定义:
+    typedef struct aeFileEvent {
+        int mask;               // 标记事件状态(read|write)
+        aeFileProc *rfileProc;  // 可读事件回调处理函数
+        aeFileProc *wfileProc;  // 可写事件回调处理函数
+        void *clientData;       // 用户数据
+    };
+
+    typedef struct aeFireEvent {
+        int mask;               // 事件状态
+        int fd;                 // 文件描述符 
+    };
+
+    aeFireEvent与aeFileEvent关系
+
+    设置最大可处理的事件是aeFileEvent[max]:
+
+    aeFireEvent.fd 是 aeFileEvent 索引 这样当一个事件发生通过epoll_wait得到fd可直接获取到对应事件的执行函数
+
+    aeProcessEvents是处理网络事件的函数
+
+2. 定时器事件
+    
+    redis的定时器的实现是一个简单的链表，因为定时器事件只有一个 就是做定期dump等
+
+    一般常见的定时器实现都是堆或者红黑树来实现
