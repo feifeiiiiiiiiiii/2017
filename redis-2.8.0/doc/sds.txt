@@ -1,0 +1,18 @@
+数据结构:
+    struct sdshdr {
+        int len;    // 总长度 除去sdshdr头
+        int free;   // 未使用
+        char buf[]; // 数据
+    }
+
+    sdslen ->
+        # 堆上的内存地址是向上生长的，所以 s->buf指向的首地址减掉sdshdr大小就是sdshdr的首地址
+        struct sdshdr *sh = (void *)(s - (sizeof(struct sdshdr)));
+        return sh->len;
+
+    # 如果当前分配的空间不满足了自动扩充到原来的2倍(最大支持扩充到1M)
+    sdsMakeRoomFor
+        realloc(size)
+
+    其他的看(sds.h/sds.c)
+
