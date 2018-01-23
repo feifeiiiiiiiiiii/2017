@@ -20,6 +20,8 @@ type Topic struct {
 	idFactory      *guidFactory
 
     memoryMsgChan   chan *Message
+
+    channelMap      map[string]*Channel
 }
 
 const (
@@ -37,6 +39,7 @@ func NewTopic(topicName string) *Topic {
         name:		    topicName,
 		idFactory:      NewGUIDFactory(NODEID),
         memoryMsgChan:  make(chan *Message, MemQeueSize),
+        channelMap:     make(map[string]*Channel),
     }
 
     dqLogf := func(level diskqueue.LogLevel, f string, args ...interface{}) {
@@ -64,13 +67,24 @@ func (t *Topic) messagePump() {
     var buf []byte
     var msg *Message
     var err error
+    var chans []*Channel
 
-    backendChan = t.backend.ReadChan()
-    memoryMsgChan = t.memoryMsgChan
+    // copy出来，不要直接对channelMap操作
+    t.RLock()
+    for _, c := range t.channelMap {
+        chans = append(chans, c)
+    }
+    t.RUnlock()
+
+    if len(chans) > 0 {
+        backendChan = t.backend.ReadChan()
+        memoryMsgChan = t.memoryMsgChan
+    }
+
 
     for {
         select {
-        case msg = <- memoryMsgChan:
+        case msg = <-memoryMsgChan:
         case buf = <-backendChan:
             msg, err = decodeMessage(buf)
             if err != nil {
@@ -79,6 +93,20 @@ func (t *Topic) messagePump() {
             }
         }
         fmt.Println(msg)
+    }
+
+    // 把消息均等的放入每个channel中
+    for i, channel := range chans {
+        chanMsg := msg
+        if i > 0 {
+			chanMsg = NewMessage(msg.ID, msg.Body)
+			chanMsg.Timestamp = msg.Timestamp
+			chanMsg.deferred = msg.deferred
+        }
+        err := channel.PutMessage(chanMsg)
+        if err != nil {
+            fmt.Println("channel putmessage err - %s", err)
+        }
     }
 }
 
