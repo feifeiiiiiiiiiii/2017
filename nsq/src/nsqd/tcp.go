@@ -29,6 +29,7 @@ func (p *tcpServer) Handle(clientConn net.Conn) {
         prot = &protocolV2{ctx: p.ctx}
     default:
         fmt.Println("bad protocol magic ", protocolMagic)
+        clientConn.Close()
         return
     }
 

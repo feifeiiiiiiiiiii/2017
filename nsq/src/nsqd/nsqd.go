@@ -45,3 +45,23 @@ func (n *NSQD) Main() {
     //})
 }
 
+func (n *NSQD) GetTopic(topicName string) *Topic {
+    n.RLock()
+    t, ok := n.topicMap[topicName]
+    n.RUnlock()
+    if ok {
+        return t
+    }
+    n.Lock()
+    t , ok = n.topicMap[topicName]
+    if ok {
+        n.Unlock()
+        return t
+    }
+
+    t = NewTopic(topicName, &context{n})
+    n.topicMap[topicName] = t
+    n.Unlock()
+    return t
+}
+

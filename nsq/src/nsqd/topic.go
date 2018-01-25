@@ -22,6 +22,11 @@ type Topic struct {
     memoryMsgChan   chan *Message
 
     channelMap      map[string]*Channel
+
+    ctx             *context
+
+    // 维护channel状态
+    channelUpdateChan chan int
 }
 
 const (
@@ -31,15 +36,17 @@ const (
     SyncEvery = 2500
     SyncTimeout = time.Second * 2
 	NODEID = 123456
-    MemQeueSize = 1
+    MemQeueSize = 100
 )
 
-func NewTopic(topicName string) *Topic {
+func NewTopic(topicName string, ctx *context) *Topic {
     t := &Topic{
         name:		    topicName,
 		idFactory:      NewGUIDFactory(NODEID),
         memoryMsgChan:  make(chan *Message, MemQeueSize),
         channelMap:     make(map[string]*Channel),
+        ctx: ctx,
+        channelUpdateChan: make(chan int),
     }
 
     dqLogf := func(level diskqueue.LogLevel, f string, args ...interface{}) {
@@ -81,9 +88,24 @@ func (t *Topic) messagePump() {
         memoryMsgChan = t.memoryMsgChan
     }
 
+    fmt.Println("topic messagePump")
 
     for {
         select {
+        case <-t.channelUpdateChan:
+            chans = chans[:0]
+            t.RLock()
+            for _, c := range t.channelMap {
+                chans = append(chans, c)
+            }
+            t.RUnlock()
+            if len(chans) > 0 {
+                backendChan = t.backend.ReadChan()
+                memoryMsgChan = t.memoryMsgChan
+            } else {
+                backendChan = nil
+                memoryMsgChan = nil
+            }
         case msg = <-memoryMsgChan:
         case buf = <-backendChan:
             msg, err = decodeMessage(buf)
@@ -92,20 +114,18 @@ func (t *Topic) messagePump() {
                 continue
             }
         }
-        fmt.Println(msg)
-    }
-
-    // 把消息均等的放入每个channel中
-    for i, channel := range chans {
-        chanMsg := msg
-        if i > 0 {
-			chanMsg = NewMessage(msg.ID, msg.Body)
-			chanMsg.Timestamp = msg.Timestamp
-			chanMsg.deferred = msg.deferred
-        }
-        err := channel.PutMessage(chanMsg)
-        if err != nil {
-            fmt.Println("channel putmessage err - %s", err)
+        // 把消息均等的放入每个channel中
+        for i, channel := range chans {
+            chanMsg := msg
+            if i > 0 {
+                chanMsg = NewMessage(msg.ID, msg.Body)
+                chanMsg.Timestamp = msg.Timestamp
+                chanMsg.deferred = msg.deferred
+            }
+            err := channel.PutMessage(chanMsg)
+            if err != nil {
+                fmt.Println("channel putmessage err - %s", err)
+            }
         }
     }
 }
@@ -169,6 +189,9 @@ func (t *Topic) GetChannel(channelName string) *Channel {
 	t.Unlock()
 	if isNew {
 		fmt.Println("create new channel %s", channelName)
+        select {
+        case t.channelUpdateChan <- 1:
+        }
 	}
 	return channel
 }

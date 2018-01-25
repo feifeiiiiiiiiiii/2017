@@ -3,6 +3,7 @@ package nsqd
 import (
     "bufio"
     "net"
+	"sync"
 )
 
 const defaultBufferSize = 16 * 1024
@@ -19,6 +20,11 @@ type clientV2 struct {
 
     ClientId    string
     Hostname    string
+
+    Channel     *Channel
+	writeLock	sync.RWMutex
+
+    SubEventChan chan *Channel
 }
 
 func newClientV2(id int64, conn net.Conn, ctx *context) *clientV2 {
@@ -36,7 +42,13 @@ func newClientV2(id int64, conn net.Conn, ctx *context) *clientV2 {
 
         ClientId: identifier,
         Hostname: identifier,
+
+        SubEventChan: make(chan *Channel, 1),
     }
 
     return c
+}
+
+func (c *clientV2) Flush() error {
+	return c.Writer.Flush()
 }
