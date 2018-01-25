@@ -7,16 +7,22 @@ import (
     "github.com/nsqio/go-diskqueue"
 )
 
+type Consumer interface {
+
+}
+
+
 type Channel struct {
     sync.RWMutex
 
-	messageCount uint64
+	messageCount    uint64
 
-    topicName   string
-    name        string
-    backend     BackendQueue
+    topicName       string
+    name            string
+    backend         BackendQueue
 
-    memoryMsgChan chan *Message
+    memoryMsgChan   chan *Message
+    clients         map[int64]Consumer
 }
 
 func NewChannel(topicName string, channelName string) *Channel {
@@ -24,6 +30,7 @@ func NewChannel(topicName string, channelName string) *Channel {
         topicName:  topicName,
         name:       channelName,
         memoryMsgChan: make(chan *Message, MemQeueSize),
+        clients:    make(map[int64]Consumer),
     }
 
     backendName := getBackendName(topicName, channelName)
@@ -68,9 +75,31 @@ func (c *Channel) put(m *Message) error {
 		err := writeMessageToBackend(b, m, c.backend)
 		bufferPoolPut(b)
 		if err != nil {
-			fmt.Println("writeMessageToBackend err-%s", err)
+            fmt.Println("channel: writeMessageToBackend err-%s", err)
 			return err
 		}
 	}
 	return nil
+}
+
+func (c *Channel) AddClient(clientId int64, client Consumer) {
+    c.Lock()
+    defer c.Unlock()
+
+    _, ok := c.clients[clientId]
+    if ok {
+        return
+    }
+    c.clients[clientId] = client
+}
+
+func (c *Channel) RemoveClient(clientId int64) {
+    c.Lock()
+    defer c.Unlock()
+
+    _, ok := c.clients[clientId]
+    if !ok {
+        return
+    }
+    delete(c.clients, clientId)
 }

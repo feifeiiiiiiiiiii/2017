@@ -1,0 +1,42 @@
+package nsqd
+
+import (
+    "bufio"
+    "net"
+)
+
+const defaultBufferSize = 16 * 1024
+
+type clientV2 struct {
+    ID      int64
+    ctx     *context
+
+    net.Conn
+
+    // reading/writing interfaces
+    Reader *bufio.Reader
+    Writer *bufio.Writer
+
+    ClientId    string
+    Hostname    string
+}
+
+func newClientV2(id int64, conn net.Conn, ctx *context) *clientV2 {
+    var identifier string
+    if conn != nil {
+        identifier, _, _ = net.SplitHostPort(conn.RemoteAddr().String())
+    }
+    c := &clientV2 {
+        ID: id,
+        ctx: ctx,
+        Conn: conn,
+
+        Reader: bufio.NewReaderSize(conn, defaultBufferSize),
+        Writer: bufio.NewWriterSize(conn, defaultBufferSize),
+
+        ClientId: identifier,
+        Hostname: identifier,
+    }
+
+    return c
+}

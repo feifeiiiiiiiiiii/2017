@@ -151,3 +151,24 @@ retry:
 func (t *Topic) Close() error {
     return t.backend.Close()
 }
+
+// this expects the caller to handle locking
+func (t *Topic) getOrCreateChannel(channelName string) (*Channel, bool) {
+	channel, ok := t.channelMap[channelName]
+	if !ok {
+		channel = NewChannel(t.name, channelName)
+		t.channelMap[channelName] = channel
+		return channel, true
+	}
+	return channel, false
+}
+
+func (t *Topic) GetChannel(channelName string) *Channel {
+	t.Lock()
+	channel, isNew := t.getOrCreateChannel(channelName)
+	t.Unlock()
+	if isNew {
+		fmt.Println("create new channel %s", channelName)
+	}
+	return channel
+}
