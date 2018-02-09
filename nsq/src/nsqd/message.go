@@ -98,4 +98,3 @@ func writeMessageToBackend(buf *bytes.Buffer, msg *Message, bq BackendQueue) err
 	}
 	return bq.Put(buf.Bytes())
 }
-
